@@ -3,8 +3,8 @@
 
 //for servos
 #define SERVO_1 2
-#define SERVO_2 4
-#define SERVO_3 5
+#define SERVO_2 6
+#define SERVO_3 8
 
 #define SERVO_1_UpLim 45
 #define SERVO_2_UpLim 45
@@ -26,8 +26,8 @@ int s3_ang = init_angle;
 #define TOF_2_ADDRESS 0x32
 
 #define TOF_0_XSHT 4
-#define TOF_1_XSHT 6
-#define TOF_2_XSHT 8
+#define TOF_1_XSHT 5
+#define TOF_2_XSHT 7
 
 #define COUNT_TOFS 3
 
@@ -39,7 +39,7 @@ VL53L0X_RangingMeasurementData_t tof_0_reading;
 VL53L0X_RangingMeasurementData_t tof_1_reading;
 VL53L0X_RangingMeasurementData_t tof_2_reading;
 
-int dists[COUNT_TOFS];
+float dists[COUNT_TOFS];
 
 void init_tofSensors() {
 
@@ -48,41 +48,46 @@ void init_tofSensors() {
   digitalWrite(TOF_1_XSHT, LOW);
   digitalWrite(TOF_2_XSHT, LOW);
   delay(10);
-
   // enable all tofs
-  digitalWrite(TOF_0_XSHT, HIGH);    
+  digitalWrite(TOF_0_XSHT, HIGH);
   digitalWrite(TOF_1_XSHT, HIGH);
   digitalWrite(TOF_2_XSHT, HIGH);
   delay(10);
 
-  // configure all tofs one by one
+  // activating TOF0 and reset all others
   digitalWrite(TOF_0_XSHT, HIGH);
   digitalWrite(TOF_1_XSHT, LOW);
   digitalWrite(TOF_2_XSHT, LOW);
 
-  if (!tof_0.begin(TOF_0_ADDRESS)) {
-
-    while( 1) { Serial.println("Failed to boot first VL53L0X."); delay(500);};
-
+  // initing TOF0
+  if(!tof_0.begin(TOF_0_ADDRESS)) {
+    Serial.println(F("Failed to boot first VL53L0X"));
+    while(1);
   }
   delay(10);
 
+  // activating TOF1
   digitalWrite(TOF_1_XSHT, HIGH);
   digitalWrite(TOF_2_XSHT, LOW);
-  
-  if (!tof_1.begin(TOF_1_ADDRESS)) {
+  delay(10);
 
-    while(1) { Serial.println("Failed to boot second VL53L0X."); delay(500);};
-
+  //initing TOF1
+  if(!tof_1.begin(TOF_1_ADDRESS)) {
+    Serial.println(F("Failed to boot second VL53L0X"));
+    while(1);
   }
   delay(10);
 
+  Serial.println("Code successfully run until here.");
+
+  // activating TOF2
   digitalWrite(TOF_2_XSHT, HIGH);
-  
-  if (!tof_2.begin(TOF_2_ADDRESS)) {
+  delay(10);
 
-    while(1) { Serial.println("Failed to boot third VL53L0X."); delay(500);};
-
+  //initing TOF2
+  if(!tof_2.begin(TOF_2_ADDRESS)) {
+    Serial.println(F("Failed to boot third VL53L0X"));
+    while(1);
   }
   
 }
@@ -161,10 +166,10 @@ void read_distance() {
 }
 
 //for control system's target
-uint16_t distInMm = 69; //target, should be changed
-uint16_t errInMm[COUNT_TOFS];
-uint16_t tmpSumDist[COUNT_TOFS];
-uint8_t aveCount = 50;
+float distInMm = 69; //target, should be changed
+float errInMm[COUNT_TOFS];
+float tmpSumDist[COUNT_TOFS];
+float aveCount = 50;
 bool r1_aligned;
 bool r2_aligned;
 bool r3_aligned;
@@ -221,35 +226,34 @@ void checkAlignment(bool isTest) {
   if (isTest) {
 
     Serial.print("Test measure invoked!");
-    Serial.println();
-    Serial.println();
+    Serial.println("\n");
 
     Serial.print("At address 0x");
     Serial.print(TOF_0_ADDRESS, HEX);
-    Serial.print("Current Reading: ");
+    Serial.print("\nCurrent Reading: ");
     Serial.print(dists[0], DEC);
     Serial.println();
     Serial.print("Error in mm: ");
     Serial.print(errInMm[0], DEC);
-    Serial.println();
+    Serial.println("\n");
 
     Serial.print("At address 0x");
     Serial.print(TOF_1_ADDRESS, HEX);
-    Serial.print("Current Reading: ");
+    Serial.print("\nCurrent Reading: ");
     Serial.print(dists[1], DEC);
     Serial.println();
     Serial.print("Error in mm: ");
     Serial.print(errInMm[1], DEC);
-    Serial.println();
+    Serial.println("\n");
 
     Serial.print("At address 0x");
     Serial.print(TOF_2_ADDRESS, HEX);
-    Serial.print("Current Reading: ");
+    Serial.print("\nCurrent Reading: ");
     Serial.print(dists[2], DEC);
     Serial.println();
     Serial.print("Error in mm: ");
     Serial.print(errInMm[2], DEC);
-    Serial.println();
+    Serial.println("\n");
 
   }
   else {
@@ -294,14 +298,14 @@ void setup() {
 
   init_tofSensors();
 
-  Serial.println("Initilization Complete! Starting...");
-  Serial.println();
-  for (int i = 0; i < 10; i++) {
+  Serial.print("\nInitilization Complete! Starting...");
+  for (int i = 0; i < 15; i++) {
 
-    Serial.println(".");
+    Serial.print(".");
     delay(200);
 
   }
+  Serial.println();
 
 }
 
