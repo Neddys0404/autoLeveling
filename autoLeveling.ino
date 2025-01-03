@@ -1,5 +1,6 @@
 #include <Servo.h>
 #include <Adafruit_VL53L0X.h>  
+#include <Wire.h>
 
 //for servos
 #define SERVO_1 2
@@ -22,12 +23,12 @@ int s3_ang = init_angle;
 
 //for tof sensors
 #define TOF_0_ADDRESS 0x30
-#define TOF_1_ADDRESS 0x31
-#define TOF_2_ADDRESS 0x32
+#define TOF_1_ADDRESS 0x54
+#define TOF_2_ADDRESS 0x47
 
 #define TOF_0_XSHT 4
 #define TOF_1_XSHT 5
-#define TOF_2_XSHT 7
+#define TOF_2_XSHT 22
 
 #define COUNT_TOFS 3
 
@@ -38,6 +39,8 @@ Adafruit_VL53L0X tof_2 = Adafruit_VL53L0X();
 VL53L0X_RangingMeasurementData_t tof_0_reading;
 VL53L0X_RangingMeasurementData_t tof_1_reading;
 VL53L0X_RangingMeasurementData_t tof_2_reading;
+
+float offsetError = 15.9; // offset error
 
 float dists[COUNT_TOFS];
 
@@ -60,7 +63,7 @@ void init_tofSensors() {
   digitalWrite(TOF_2_XSHT, LOW);
 
   // initing TOF0
-  if(!tof_0.begin(TOF_0_ADDRESS)) {
+  if(!tof_0.begin(TOF_0_ADDRESS, true, &Wire, Adafruit_VL53L0X::VL53L0X_SENSE_HIGH_ACCURACY)) {
     Serial.println(F("Failed to boot first VL53L0X"));
     while(1);
   }
@@ -72,7 +75,7 @@ void init_tofSensors() {
   delay(10);
 
   //initing TOF1
-  if(!tof_1.begin(TOF_1_ADDRESS)) {
+  if(!tof_1.begin(TOF_1_ADDRESS, true, &Wire, Adafruit_VL53L0X::VL53L0X_SENSE_HIGH_ACCURACY)) {
     Serial.println(F("Failed to boot second VL53L0X"));
     while(1);
   }
@@ -80,15 +83,15 @@ void init_tofSensors() {
 
   Serial.println("Code successfully run until here.");
 
-  // activating TOF2
+  /*// activating TOF2
   digitalWrite(TOF_2_XSHT, HIGH);
   delay(10);
 
   //initing TOF2
-  if(!tof_2.begin(TOF_2_ADDRESS)) {
+  if(!tof_2.begin(TOF_2_ADDRESS, true, &Wire, Adafruit_VL53L0X::VL53L0X_SENSE_HIGH_ACCURACY)) {
     Serial.println(F("Failed to boot third VL53L0X"));
     while(1);
-  }
+  }*/
   
 }
 
@@ -140,7 +143,7 @@ void read_distance() {
   */
 
   //read third tof
-  tof_2.rangingTest(&tof_2_reading, false); // pass in 'true' to get debug data printout!
+  //tof_2.rangingTest(&tof_2_reading, false); // pass in 'true' to get debug data printout!
 
   /*
   //for debug purpose
@@ -185,7 +188,7 @@ void checkAlignment(bool isTest) {
   for (int i = 0; i < aveCount; i++) {
 
     read_distance();
-    delay(10);
+    delay(20);
 
     if (tof_0_reading.RangeStatus != 4) {
 
@@ -205,20 +208,25 @@ void checkAlignment(bool isTest) {
       /* Debug */
     }
 
-    if (tof_2_reading.RangeStatus != 4) {
+    /*if (tof_2_reading.RangeStatus != 4) {
 
       tmpSumDist[2] += tof_2_reading.RangeMilliMeter;
       
     }
     else {
-      /* Debug */
-    }
+      
+    }*/
         
   }
 
   for (int i = 0; i < COUNT_TOFS; i++) {
 
-    dists[i] = tmpSumDist[i]/aveCount;
+    dists[i] = (tmpSumDist[i]/aveCount) + offsetError;
+
+    //some math fitting operations, quadratic equation, coefficients obtained from matlab polyfit function
+    //fitting "error"
+    dists[i] = (-(2.31486397058827) + sqrt((pow(2.31486397058827,2)) - (4*(-0.00677039565826346)*(-63.4484961484612-(dists[i])))))/(2*(-0.00677039565826346));
+
     errInMm[i] = distInMm - dists[i];
 
   }
@@ -258,6 +266,7 @@ void checkAlignment(bool isTest) {
   }
   else {
 
+    //tolerance of +-0.5mm, worst case scenario assumed to be 1mm maximum deviation at each point
     r1_aligned = (errInMm[0] < 0.5 && errInMm[0] > -0.5);
     r2_aligned = (errInMm[1] < 0.5 && errInMm[1] > -0.5);
     r3_aligned = (errInMm[2] < 0.5 && errInMm[2] > -0.5);
@@ -278,6 +287,8 @@ void setup() {
 
   Serial.println("Serial succesfully opened.");
   delay(500);
+
+  Wire.begin();
 
   // Init Servos
   Servo_1.attach(SERVO_1);
