@@ -1,6 +1,5 @@
 #include <Servo.h>
-#include <Adafruit_VL53L0X.h>  
-#include <Wire.h>
+#include <Adafruit_VL53L0X.h>
 
 //for servos
 #define SERVO_1 2
@@ -287,8 +286,6 @@ void setup() {
 
   Serial.println("Serial succesfully opened.");
   delay(500);
-
-  Wire.begin();
 
   // Init Servos
   Servo_1.attach(SERVO_1);
